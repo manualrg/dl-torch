@@ -8,12 +8,32 @@ from torch.utils.data import DataLoader, TensorDataset
 
 def load_array(data_arrays: typing.Tuple[torch.Tensor, torch.Tensor],
                batch_size: int, is_train: bool = True) -> DataLoader:
+    """
+
+    :param data_arrays: (features, labels) torch. tensors
+        features: num_features x num_examples
+        labels: num_features x num_ouputs
+    :param batch_size:
+    :param is_train:
+    :return:
+    """
     dataset = TensorDataset(*data_arrays)
 
     return DataLoader(dataset, batch_size, shuffle=is_train)
 
 
-def train(data_iter_train, data_iter_eval, model, optimizer, loss, num_epochs, print_every=1):
+def train(data_iter_train, data_iter_eval, model, optimizer, loss, num_epochs, print_every=1, return_params = False):
+    """
+
+    :param data_iter_train:
+    :param data_iter_eval:
+    :param model:
+    :param optimizer:
+    :param loss:
+    :param num_epochs:
+    :param print_every:
+    :return:
+    """
     params_ = []
     train_loss, valid_loss = [], []
 
@@ -33,8 +53,9 @@ def train(data_iter_train, data_iter_eval, model, optimizer, loss, num_epochs, p
                 y_hat = model.forward(X_valid)
                 l_valid = loss(y_hat, y_valid).item()
 
-        if hasattr(model, 'get_params'):
-            params_.append(model.get_params)
+        if return_params:
+            if hasattr(model, 'get_params'):
+                params_.append(model.get_params)
 
         train_loss.append(run_loss)
         valid_loss.append(l_valid)
@@ -44,7 +65,10 @@ def train(data_iter_train, data_iter_eval, model, optimizer, loss, num_epochs, p
 
     loss_df = pd.DataFrame({'loss_train': train_loss, 'loss_valid': valid_loss})
 
-    return model, params_, loss_df
+    if return_params:
+        return model,  loss_df, params_
+    else:
+        return model, loss_df
 
 
 class MLPRegressor(torch.nn.Module):
