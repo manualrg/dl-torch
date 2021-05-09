@@ -106,3 +106,63 @@ class MLPRegressor(torch.nn.Module):
         for layer in self.hidden_layers:
             layer.weight.data.normal_(mu, sigma)
             layer.bias.data.fill_(0)
+
+
+class MLPClassifier(torch.nn.Module):
+    def __init__(self, input_size, output_size, hidden_layers, drop_p=0, return_logits=True, seed=123):
+        super(MLPClassifier, self).__init__()
+
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_layers = hidden_layers
+        self.drop_p = drop_p
+        self.seed = seed
+        self.return_logits = return_logits
+
+        self.n_layers = len(hidden_layers)
+
+        # hidden layer parameters: (hi, ho)
+
+        # Add the first layer, input to a hidden layer
+        self.hidden_layers = nn.ModuleList([nn.Linear(input_size, hidden_layers[0])])
+
+        # Add a variable number of more hidden layers
+        layer_sizes = zip(hidden_layers[:-1], hidden_layers[1:])
+        self.hidden_layers.extend([nn.Linear(h1, h2) for h1, h2 in layer_sizes])
+
+        self.output = nn.Linear(hidden_layers[-1], output_size)
+
+        if self.drop_p > 0.:
+            self.dropout = nn.Dropout(p=drop_p)
+
+        torch.manual_seed(seed)
+        self.reset_parameters()
+
+    def forward(self, X):
+        x = X
+        for linear in self.hidden_layers:
+            x = F.relu(linear(x))
+            if self.drop_p > 0.:
+                x = self.dropout(x)
+        x = self.output(x)
+
+        if self.output_size == 1:
+            if self.return_logits:
+                # if criterion nn.BCEWithLogitsLoss() is used, remove sigmoid activation function to return logits instead
+                return x
+            else:
+                # return probs: nn.BCELoss
+                return torch.sigmoid(x)
+
+        else:
+            if self.return_logits:
+                # if criterion nn.CrossEntropyLoss() is used, remove softmax activation function to return logits instead
+                return x
+            else:
+                # return log-probs: nn.NLLLoss
+                return nn.LogSoftmax(x, dim=1)
+
+    def reset_parameters(self, mu=0., sigma=0.01):
+        for layer in self.hidden_layers:
+            layer.weight.data.normal_(mu, sigma)
+            layer.bias.data.fill_(0)
